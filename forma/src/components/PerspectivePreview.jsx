@@ -1,0 +1,93 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+import { COLORS, CAMERA } from "../constants/theme";
+import { generateSplineCurve } from "../utils/geometry";
+import { useResizableCanvas } from "../hooks/useResizableCanvas";
+import { ViewportLabel } from "./ViewportLabel";
+
+export function PerspectivePreview({ pieces, refImage }) {
+  const canvasRef = useRef(null);
+  const imgRef = useRef(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!refImage.src) { imgRef.current = null; setImgLoaded(false); return; }
+    const img = new Image();
+    img.onload = () => { imgRef.current = img; setImgLoaded(true); };
+    img.onerror = () => { imgRef.current = null; setImgLoaded(false); };
+    img.src = refImage.src;
+  }, [refImage.src]);
+
+  const drawFn = useCallback((ctx, w, h) => {
+    const cx = w / 2, cy = h / 2;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#080808"; ctx.fillRect(0, 0, w, h);
+
+    // Reference image behind everything
+    if (imgRef.current && refImage.visible) {
+      ctx.save();
+      ctx.globalAlpha = refImage.opacity;
+      const img = imgRef.current;
+      const imgAspect = img.width / img.height;
+      const vpAspect = w / h;
+      const sc = refImage.scale || 1.0;
+      let drawW, drawH;
+      if (imgAspect > vpAspect) {
+        drawW = w * 0.8 * sc;
+        drawH = drawW / imgAspect;
+      } else {
+        drawH = h * 0.8 * sc;
+        drawW = drawH * imgAspect;
+      }
+      const drawX = cx - drawW / 2 + (refImage.x || 0);
+      const drawY = cy - drawH / 2 + (refImage.y || 0);
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      ctx.restore();
+    }
+
+    const grad = ctx.createRadialGradient(cx, cy, 50, cx, cy, Math.max(w, h) * 0.55);
+    grad.addColorStop(0, "transparent"); grad.addColorStop(1, "rgba(0,0,0,0.3)");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = COLORS.gridLine; ctx.lineWidth = 0.5; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+    ctx.setLineDash([]);
+
+    const vd = CAMERA.viewerDistance;
+    const sortedByDepth = [...pieces].sort((a, b) => b.z - a.z);
+
+    sortedByDepth.forEach(piece => {
+      const sc = piece.scale;
+      const cosT = Math.cos(piece.theta || 0);
+      const perspFactor = vd / (vd + piece.z);
+
+      const curve = generateSplineCurve(piece.controlPoints, 16);
+      ctx.beginPath();
+      curve.forEach((p, i) => {
+        const px = cx + (piece.x + p.x * sc * cosT) * perspFactor;
+        const py = cy + (piece.y + p.y * sc) * perspFactor;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      });
+      ctx.closePath();
+      ctx.fillStyle = piece.color + "cc"; ctx.fill();
+      ctx.strokeStyle = piece.color; ctx.lineWidth = 1; ctx.stroke();
+    });
+
+    ctx.strokeStyle = COLORS.panelBorder; ctx.lineWidth = 1; ctx.strokeRect(20, 20, w - 40, h - 40);
+    const mk = 12;
+    [[20,20,1,1],[w-20,20,-1,1],[20,h-20,1,-1],[w-20,h-20,-1,-1]].forEach(([x,y,dx,dy]) => {
+      ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+mk*dx,y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+mk*dy); ctx.stroke();
+    });
+  }, [pieces, refImage, imgLoaded]);
+
+  useResizableCanvas(canvasRef, drawFn, [drawFn]);
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%", background: "#080808", overflow: "hidden" }}>
+      <ViewportLabel label="Perspective Output" subtitle="Viewer POV · Front-facing" />
+      <canvas ref={canvasRef} style={{ position: "absolute", top: 0, left: 0 }} />
+    </div>
+  );
+}
