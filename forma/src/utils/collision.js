@@ -39,6 +39,10 @@ export function resolveCollisions(pieces, movingIndex, updates) {
   const ta = (moving.thickness || 2) / 2;
   const boundA = Math.sqrt(ra * ra + ta * ta);
 
+  const hasX = "x" in updates;
+  const hasY = "y" in updates;
+  const hasZ = "z" in updates;
+
   let { x, y, z } = moving;
   // Iterate a few times to resolve cascading overlaps
   for (let iter = 0; iter < 5; iter++) {
@@ -60,27 +64,29 @@ export function resolveCollisions(pieces, movingIndex, updates) {
         resolved = false;
         const dist = Math.sqrt(dist2);
         if (dist < 0.01) {
-          // Pieces are at the same position — push along an arbitrary direction
-          x += minDist;
+          // Pieces are at the same position — push along the axes being updated
+          if (hasX) x += minDist;
+          else if (hasY) y += minDist;
+          else if (hasZ) z += minDist;
         } else {
-          // Push the moving piece away so it's just outside the collision radius
+          // Push only along the axes being updated
           const pushDist = minDist - dist;
           const nx = dx / dist;
           const ny = dy / dist;
           const nz = dz / dist;
-          x += nx * pushDist;
-          y += ny * pushDist;
-          z += nz * pushDist;
+          if (hasX) x += nx * pushDist;
+          if (hasY) y += ny * pushDist;
+          if (hasZ) z += nz * pushDist;
         }
       }
     }
     if (resolved) break;
   }
 
-  // Build the result: only include axes that were in the original updates or got adjusted
+  // Only include axes that were in the original updates
   const result = { ...updates };
-  if ("x" in updates || x !== moving.x) result.x = Math.round(x);
-  if ("y" in updates || y !== moving.y) result.y = Math.round(y);
-  if ("z" in updates || z !== moving.z) result.z = Math.round(z);
+  if (hasX) result.x = Math.round(x);
+  if (hasY) result.y = Math.round(y);
+  if (hasZ) result.z = Math.round(z);
   return result;
 }

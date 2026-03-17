@@ -35,6 +35,16 @@ export function CoordinateGrid({ pieces, selectedPiece, onSelectPiece, onUpdateP
       const isSel = i === selectedPiece;
 
       const curve = generateSplineCurve(piece.controlPoints, 8);
+
+      // Compute centroid of the parametric curve in canvas coords
+      let centX = 0, centY = 0;
+      for (const p of curve) {
+        centX += p.x * piece.scale * GS;
+        centY += p.y * piece.scale * GS;
+      }
+      centX = px + centX / curve.length;
+      centY = py + centY / curve.length;
+
       ctx.beginPath();
       curve.forEach((p, j) => {
         const sx = px + p.x * piece.scale * GS;
@@ -53,30 +63,55 @@ export function CoordinateGrid({ pieces, selectedPiece, onSelectPiece, onUpdateP
         ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
       }
 
-      ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2);
+      // Center dot at the curve centroid
+      ctx.beginPath(); ctx.arc(centX, centY, 3, 0, Math.PI * 2);
       ctx.fillStyle = isSel ? "#fff" : piece.color; ctx.fill();
 
       ctx.fillStyle = isSel ? "#fff" : COLORS.textDim;
       ctx.font = `${isSel ? "bold " : ""}8px monospace`; ctx.textAlign = "center";
-      ctx.fillText(piece.id, px, py - 10); ctx.textAlign = "left";
-      if (isSel) { ctx.fillStyle = COLORS.textDim; ctx.font = "8px monospace"; ctx.fillText(`(${piece.x}, ${piece.y})`, px + 14, py + 3); }
+      ctx.fillText(piece.id, centX, centY - 10); ctx.textAlign = "left";
+      if (isSel) { ctx.fillStyle = COLORS.textDim; ctx.font = "8px monospace"; ctx.fillText(`(${piece.x}, ${piece.y})`, centX + 14, centY + 3); }
     });
   }, [pieces, selectedPiece]);
 
   useResizableCanvas(canvasRef, drawFn, [drawFn]);
 
+  // Compute the curve centroid offset for a piece (in scaled GS units, relative to piece origin)
+  const getCentroidOffset = useCallback((piece) => {
+    const curve = generateSplineCurve(piece.controlPoints, 8);
+    let cx = 0, cy = 0;
+    for (const p of curve) {
+      cx += p.x * piece.scale * GS;
+      cy += p.y * piece.scale * GS;
+    }
+    return { cx: cx / curve.length, cy: cy / curve.length };
+  }, []);
+
+  const dragOffsetRef = useRef({ dx: 0, dy: 0 });
+
   const handleMouseDown = (e) => {
     const { x, y } = getCanvasMousePos(e, canvasRef);
     for (let i = 0; i < pieces.length; i++) {
-      const dx = x - pieces[i].x * GS, dy = y - pieces[i].y * GS;
-      if (dx * dx + dy * dy < 400) { onSelectPiece(i); setDragging(i); return; }
+      const off = getCentroidOffset(pieces[i]);
+      const centX = pieces[i].x * GS + off.cx;
+      const centY = pieces[i].y * GS + off.cy;
+      const dx = x - centX, dy = y - centY;
+      if (dx * dx + dy * dy < 400) {
+        onSelectPiece(i);
+        // Store offset from mouse to piece origin so dragging moves the origin, not the centroid
+        dragOffsetRef.current = { dx: pieces[i].x * GS - x, dy: pieces[i].y * GS - y };
+        setDragging(i);
+        return;
+      }
     }
   };
 
   const handleMouseMove = (e) => {
     if (dragging === null) return;
     const { x, y } = getCanvasMousePos(e, canvasRef);
-    onUpdatePiece(dragging, { x: Math.round(x / GS), y: Math.round(y / GS) });
+    const newX = Math.round((x + dragOffsetRef.current.dx) / GS);
+    const newY = Math.round((y + dragOffsetRef.current.dy) / GS);
+    onUpdatePiece(dragging, { x: newX, y: newY });
   };
 
   return (
