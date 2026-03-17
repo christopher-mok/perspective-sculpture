@@ -12,6 +12,7 @@ import { CoordinateGrid } from "./components/CoordinateGrid";
 import { ReferenceImagePanel } from "./components/ReferenceImagePanel";
 import { PieceList } from "./components/PieceList";
 import { SaveDialog } from "./components/SaveDialog";
+import { generateLaserCutSVG, downloadSVG } from "./utils/svgExport";
 
 function PerspectiveSculptor() {
   const [pieces, setPieces] = useState(makeInitialPieces);
@@ -349,7 +350,12 @@ function PerspectiveSculptor() {
               background: copyFeedback ? "#6abf8a" : COLORS.accent, color: COLORS.bg, border: "none",
               padding: "8px 20px", fontFamily: "monospace", fontSize: 10,
               letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", transition: "background 0.2s",
-            }}>{copyFeedback ? "Copied!" : "Copy to Clipboard"}</button>
+            }}>{copyFeedback ? "Copied!" : "Copy JSON"}</button>
+            <button onClick={() => downloadSVG(generateLaserCutSVG(pieces))} style={{
+              background: COLORS.accent, color: COLORS.bg, border: "none",
+              padding: "8px 20px", fontFamily: "monospace", fontSize: 10,
+              letterSpacing: 2, textTransform: "uppercase", cursor: "pointer",
+            }}>Download SVG (Laser Cut)</button>
             <button onClick={() => setActiveTab("design")} style={{
               background: "transparent", color: COLORS.textDim, border: `1px solid ${COLORS.panelBorder}`,
               padding: "8px 16px", fontFamily: "monospace", fontSize: 10,

@@ -51,10 +51,37 @@ export function getFrameBounds(pieces) {
   return { centerX, centerZ, size, frameY };
 }
 
+// Find the topmost (minimum) y on the shape curve at a given x, by interpolating
+// between consecutive sampled points that straddle targetX.
+function findTopYAtX(curve, sc, targetX) {
+  let bestY = Infinity;
+  const n = curve.length;
+  for (let i = 0; i < n; i++) {
+    const ax = curve[i].x * sc;
+    const bx = curve[(i + 1) % n].x * sc;
+    const ay = curve[i].y * sc;
+    const by = curve[(i + 1) % n].y * sc;
+
+    if ((ax <= targetX && targetX <= bx) || (bx <= targetX && targetX <= ax)) {
+      if (Math.abs(bx - ax) < 1e-6) {
+        bestY = Math.min(bestY, ay, by);
+      } else {
+        const t = (targetX - ax) / (bx - ax);
+        const y = ay + t * (by - ay);
+        if (y < bestY) bestY = y;
+      }
+    }
+  }
+  return bestY;
+}
+
 // Compute the two top attachment points for a piece's strings.
 // Returns { left: {x,y,z}, right: {x,y,z} } in world coordinates.
+// The y of each attachment point is the actual contact point where a vertical
+// string meets the top of the shape at that string's x position.
 export function getAttachmentPoints(piece, shapeScale = 0.5) {
-  const curve = generateSplineCurve(piece.controlPoints, 8);
+  // Use higher sample count for accurate contact-point interpolation
+  const curve = generateSplineCurve(piece.controlPoints, 32);
   const sc = piece.scale * shapeScale;
 
   let minLocalY = Infinity;
@@ -81,18 +108,26 @@ export function getAttachmentPoints(piece, shapeScale = 0.5) {
   const leftX = minX + spread * 0.25;
   const rightX = maxX - spread * 0.25;
 
+  // Find the actual contact y at each string's x position
+  const leftContactY = findTopYAtX(curve, sc, leftX);
+  const rightContactY = findTopYAtX(curve, sc, rightX);
+
+  // Fall back to global min if interpolation finds nothing (shouldn't happen)
+  const leftY = leftContactY < Infinity ? leftContactY : minLocalY;
+  const rightY = rightContactY < Infinity ? rightContactY : minLocalY;
+
   const cosT = Math.cos(piece.theta || 0);
   const sinT = Math.sin(piece.theta || 0);
 
   return {
     left: {
       x: piece.x + leftX * cosT,
-      y: piece.y + minLocalY,
+      y: piece.y + leftY,
       z: piece.z + leftX * sinT,
     },
     right: {
       x: piece.x + rightX * cosT,
-      y: piece.y + minLocalY,
+      y: piece.y + rightY,
       z: piece.z + rightX * sinT,
     },
   };
