@@ -334,6 +334,33 @@ function PerspectiveSculptor() {
           <div style={{ color: COLORS.textDim, fontSize: 10, marginBottom: 16 }}>
             {pieces.length} pieces · forma-sculpture-v1 · Select all and copy, or use the button below
           </div>
+
+          {/* Per-piece string lengths summary */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, color: COLORS.textDim, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>String Lengths</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 6 }}>
+              {(() => {
+                const fb = getFrameBounds(pieces);
+                return pieces.map((p) => {
+                  const sl = getStringLengths(p, fb.frameY);
+                  return (
+                    <div key={p.id} style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`,
+                      padding: "6px 10px",
+                    }}>
+                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                      <span style={{ color: COLORS.text, fontSize: 11, fontWeight: 500 }}>{p.id}</span>
+                      <span style={{ color: COLORS.textDim, fontSize: 10, marginLeft: "auto" }}>
+                        L:{sl.left}mm &nbsp; R:{sl.right}mm
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
           <textarea
             readOnly
             value={exportJSON}

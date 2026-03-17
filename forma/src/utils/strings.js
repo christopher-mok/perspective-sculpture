@@ -133,6 +133,41 @@ export function getAttachmentPoints(piece, shapeScale = 0.5) {
   };
 }
 
+// Returns string contact points in raw control-point coordinates (no piece.scale applied).
+// Used by SVG export to place contact markers at the correct position on the shape.
+export function getLocalContactPoints(controlPoints) {
+  const curve = generateSplineCurve(controlPoints, 32);
+
+  let minLocalY = Infinity;
+  let maxLocalY = -Infinity;
+  for (const p of curve) {
+    if (p.y < minLocalY) minLocalY = p.y;
+    if (p.y > maxLocalY) maxLocalY = p.y;
+  }
+  const shapeHeight = maxLocalY - minLocalY;
+  const topThreshold = minLocalY + shapeHeight * 0.2;
+
+  let minX = Infinity, maxX = -Infinity;
+  for (const p of curve) {
+    if (p.y <= topThreshold) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+    }
+  }
+
+  const spread = maxX - minX;
+  const leftX = minX + spread * 0.25;
+  const rightX = maxX - spread * 0.25;
+
+  const leftY = findTopYAtX(curve, 1, leftX);
+  const rightY = findTopYAtX(curve, 1, rightX);
+
+  return {
+    leftX, leftY: leftY < Infinity ? leftY : minLocalY,
+    rightX, rightY: rightY < Infinity ? rightY : minLocalY,
+  };
+}
+
 function dist3D(ax, ay, az, bx, by, bz) {
   return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2 + (az - bz) ** 2);
 }
