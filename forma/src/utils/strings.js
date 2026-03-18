@@ -1,18 +1,26 @@
 import { generateSplineCurve } from "./geometry";
 import { getBoundingRadius } from "./collision";
 
-// The frame floats a fixed margin above the topmost piece.
-const FRAME_MARGIN = 80;
+// Minimum clearance from the top of the highest piece to the grid frame
+const MIN_CLEARANCE = 30;
 // Padding around pieces for the frame edges
 const FRAME_PADDING = 30;
 // Default grid size: 12 × 12 inches = 30.48 cm = 304.8 mm
 const DEFAULT_GRID_SIZE = 304.8;
 
 // Compute the frame Y position (the horizontal grid above all pieces).
+// Measures from the actual top of each piece's shape, not just piece.y.
 export function getFrameY(pieces) {
-  if (pieces.length === 0) return -FRAME_MARGIN;
-  const minY = Math.min(...pieces.map(p => p.y));
-  return minY - FRAME_MARGIN;
+  if (pieces.length === 0) return -MIN_CLEARANCE;
+  let topmost = Infinity;
+  for (const p of pieces) {
+    const curve = generateSplineCurve(p.controlPoints, 8);
+    for (const pt of curve) {
+      const worldY = p.y + pt.y * p.scale;
+      if (worldY < topmost) topmost = worldY;
+    }
+  }
+  return topmost - MIN_CLEARANCE;
 }
 
 // Compute the square frame bounds that contain all pieces.

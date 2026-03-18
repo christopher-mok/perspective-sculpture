@@ -62,27 +62,21 @@ function getPathBounds(controlPoints, scaleFactor, samplesPerSegment = 32) {
 }
 
 // Generate the full SVG string for laser cutting.
-export function generateLaserCutSVG(pieces) {
+export function generateLaserCutSVG(pieces, unitScale = 1) {
   if (pieces.length === 0) return "";
 
+  const u = unitScale;
   // Compute frame bounds and string lengths for each piece
   const fb = getFrameBounds(pieces);
-  const stringData = pieces.map(p => getStringLengths(p, fb.frameY));
+  const stringData = pieces.map(p => {
+    const sl = getStringLengths(p, fb.frameY);
+    return { left: Math.round(sl.left * u), right: Math.round(sl.right * u) };
+  });
 
-  // For each piece, compute the scale factor that maps control-point units to mm.
-  // Control points have default radius ~40, so raw bounding is ~80 units across.
-  // We scale so the bounding box width = sizeCm * 10 mm.
   const pieceData = pieces.map((piece, idx) => {
-    // First measure raw bounds at scale=1 to find the natural size
-    const rawBounds = getPathBounds(piece.controlPoints, 1);
-    const rawWidth = rawBounds.maxX - rawBounds.minX;
-    const rawHeight = rawBounds.maxY - rawBounds.minY;
-    const rawMax = Math.max(rawWidth, rawHeight) || 1;
-
-    // Target physical size in mm, scaled by piece.scale
-    const targetMm = (piece.sizeCm || 5) * 10 * piece.scale;
-    const scaleFactor = targetMm / rawMax;
-
+    // Keep the laser-cut layout in the same unit system as the hanging grid:
+    // world units are exported directly to mm via `unitScale`.
+    const scaleFactor = (piece.scale || 1) * u;
     const bounds = getPathBounds(piece.controlPoints, scaleFactor);
     const w = bounds.maxX - bounds.minX;
     const h = bounds.maxY - bounds.minY;
@@ -191,36 +185,39 @@ const GRID_SVG_MARGIN = 15; // mm margin around the frame in the SVG
 const BOX_PAD = 3;          // mm padding around each pair of string dots
 const DOT_RADIUS = 1.2;     // mm
 
-export function generateGridSVG(pieces) {
+export function generateGridSVG(pieces, unitScale = 1) {
   if (pieces.length === 0) return "";
 
+  const u = unitScale;
   const fb = getFrameBounds(pieces);
-  const halfSize = fb.size / 2;
+  const scaledSize = fb.size * u;
+  const halfSize = scaledSize / 2;
 
-  // Frame corners in world XZ
-  const frameLeft = fb.centerX - halfSize;
-  const frameTop = fb.centerZ - halfSize;
+  // Frame corners in scaled XZ
+  const frameLeft = fb.centerX * u - halfSize;
+  const frameTop = fb.centerZ * u - halfSize;
 
-  // SVG coordinate offset: map world XZ to SVG with margin
-  const toSvgX = (wx) => wx - frameLeft + GRID_SVG_MARGIN;
-  const toSvgY = (wz) => wz - frameTop + GRID_SVG_MARGIN;
+  // SVG coordinate offset: map scaled world XZ to SVG with margin
+  const toSvgX = (wx) => wx * u - frameLeft + GRID_SVG_MARGIN;
+  const toSvgY = (wz) => wz * u - frameTop + GRID_SVG_MARGIN;
 
-  const svgW = fb.size + GRID_SVG_MARGIN * 2;
-  const svgH = fb.size + GRID_SVG_MARGIN * 2;
+  const svgW = scaledSize + GRID_SVG_MARGIN * 2;
+  const svgH = scaledSize + GRID_SVG_MARGIN * 2;
 
   const C = "#333"; // uniform color for all elements
 
   // Frame rectangle
   let content = "";
-  content += `  <rect x="${toSvgX(frameLeft).toFixed(1)}" y="${toSvgY(frameTop).toFixed(1)}" width="${fb.size.toFixed(1)}" height="${fb.size.toFixed(1)}" fill="none" stroke="${C}" stroke-width="0.4" />\n`;
+  content += `  <rect x="${GRID_SVG_MARGIN.toFixed(1)}" y="${GRID_SVG_MARGIN.toFixed(1)}" width="${scaledSize.toFixed(1)}" height="${scaledSize.toFixed(1)}" fill="none" stroke="${C}" stroke-width="0.4" />\n`;
 
   // Frame dimensions label
-  content += `  <text x="${(svgW / 2).toFixed(1)}" y="${(GRID_SVG_MARGIN - 4).toFixed(1)}" text-anchor="middle" font-family="monospace" font-size="4.5" fill="${C}">${Math.round(fb.size)} × ${Math.round(fb.size)} mm</text>\n`;
+  content += `  <text x="${(svgW / 2).toFixed(1)}" y="${(GRID_SVG_MARGIN - 4).toFixed(1)}" text-anchor="middle" font-family="monospace" font-size="4.5" fill="${C}">${Math.round(scaledSize)} × ${Math.round(scaledSize)} mm</text>\n`;
 
   // Per-piece string attachment points
   pieces.forEach((piece) => {
     const { left, right } = getAttachmentPoints(piece);
-    const sl = getStringLengths(piece, fb.frameY);
+    const rawSl = getStringLengths(piece, fb.frameY);
+    const sl = { left: Math.round(rawSl.left * u), right: Math.round(rawSl.right * u) };
 
     // Grid attachment points are directly above the piece attachment points (same x, z)
     const lx = toSvgX(left.x);
@@ -255,7 +252,7 @@ export function generateGridSVG(pieces) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${svgW.toFixed(1)}mm" height="${svgH.toFixed(1)}mm" viewBox="0 0 ${svgW.toFixed(1)} ${svgH.toFixed(1)}">
   <title>FORMA Grid Layout</title>
-  <desc>Hanging grid — ${pieces.length} pieces, frame ${Math.round(fb.size)}×${Math.round(fb.size)}mm</desc>
+  <desc>Hanging grid — ${pieces.length} pieces, frame ${Math.round(scaledSize)}×${Math.round(scaledSize)}mm</desc>
 ${content}</svg>`;
 }
 

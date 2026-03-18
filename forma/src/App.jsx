@@ -24,6 +24,7 @@ function PerspectiveSculptor() {
   const [saveName, setSaveName] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [unitScale, setUnitScale] = useState(1.0);
 
   // Load saved designs from storage on mount
   useEffect(() => {
@@ -114,9 +115,11 @@ function PerspectiveSculptor() {
 
   const buildExportJSON = useCallback(() => {
     const fb = getFrameBounds(pieces);
+    const u = unitScale;
     return JSON.stringify({
       format: "forma-sculpture-v1",
       exportedAt: new Date().toISOString(),
+      unitScale: u,
       camera: {
         focalLength: CAMERA.focalLength,
         sensorWidth: CAMERA.sensorWidth,
@@ -126,22 +129,22 @@ function PerspectiveSculptor() {
         const sl = getStringLengths(p, fb.frameY);
         return {
           id: p.id,
-          position: { x: p.x, y: p.y, z: p.z },
+          position: { x: +(p.x * u).toFixed(1), y: +(p.y * u).toFixed(1), z: +(p.z * u).toFixed(1) },
           scale: p.scale, theta: p.theta || 0, color: p.color,
-          sizeCm: p.sizeCm || 5, thickness: p.thickness || 3,
+          sizeCm: +((p.sizeCm || 5) * u).toFixed(2), thickness: +((p.thickness || 3) * u).toFixed(2),
           controlPoints: p.controlPoints.map(cp => ({
             x: cp.x, y: cp.y,
             handleIn: { x: cp.hInX || 0, y: cp.hInY || 0 },
             handleOut: { x: cp.hOutX || 0, y: cp.hOutY || 0 },
           })),
-          stringLengths: { left: sl.left, right: sl.right },
-          boundingTubeMm: Math.round((p.sizeCm || 5) * 10),
+          stringLengths: { left: Math.round(sl.left * u), right: Math.round(sl.right * u) },
+          boundingTubeMm: Math.round((p.sizeCm || 5) * 10 * u),
         };
       }),
-      frame: { size: Math.round(fb.size), centerX: Math.round(fb.centerX), centerZ: Math.round(fb.centerZ), frameY: Math.round(fb.frameY) },
+      frame: { size: Math.round(fb.size * u), centerX: Math.round(fb.centerX * u), centerZ: Math.round(fb.centerZ * u), frameY: Math.round(fb.frameY * u) },
       metadata: { totalPieces: pieces.length, colors: [...new Set(pieces.map(p => p.color))] },
     }, null, 2);
-  }, [pieces]);
+  }, [pieces, unitScale]);
 
   const handleCopy = useCallback((text) => {
     try {
@@ -190,7 +193,7 @@ function PerspectiveSculptor() {
       <div style={{ borderRight: `1px solid ${COLORS.panelBorder}`, overflow: "hidden", display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
         <ReferenceImagePanel refImage={refImage} onUpdate={updateRefImage} />
         <div style={{ flex: 1, overflow: "hidden" }}>
-          <PieceList pieces={pieces} selectedPiece={selectedPiece} onSelectPiece={setSelectedPiece} onUpdatePiece={updatePiece} onAddPiece={addPiece} onDuplicatePiece={duplicatePiece} onRemovePiece={removePiece} />
+          <PieceList pieces={pieces} selectedPiece={selectedPiece} onSelectPiece={setSelectedPiece} onUpdatePiece={updatePiece} onAddPiece={addPiece} onDuplicatePiece={duplicatePiece} onRemovePiece={removePiece} unitScale={unitScale} />
         </div>
       </div>
 
@@ -335,6 +338,29 @@ function PerspectiveSculptor() {
             {pieces.length} pieces · forma-sculpture-v1 · Select all and copy, or use the button below
           </div>
 
+          {/* Grid dimensions */}
+          {(() => {
+            const fb = getFrameBounds(pieces);
+            const s = Math.round(fb.size * unitScale);
+            return (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, padding: "8px 12px" }}>
+                <span style={{ color: COLORS.textDim, fontSize: 10, letterSpacing: 2, textTransform: "uppercase" }}>Grid</span>
+                <span style={{ color: COLORS.text, fontSize: 11 }}>{s} × {s} mm</span>
+                <span style={{ color: COLORS.textDim, fontSize: 10 }}>({(s / 10).toFixed(1)} × {(s / 10).toFixed(1)} cm)</span>
+                <span style={{ color: COLORS.textDim, fontSize: 10 }}>({(s / 25.4).toFixed(1)} × {(s / 25.4).toFixed(1)} in)</span>
+              </div>
+            );
+          })()}
+
+          {/* Unit scale slider */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, padding: "8px 12px" }}>
+            <span style={{ color: COLORS.textDim, fontSize: 10, letterSpacing: 2, textTransform: "uppercase", flexShrink: 0 }}>Unit Scale</span>
+            <input type="range" min={10} max={100} value={Math.round(unitScale * 100)}
+              onChange={(e) => setUnitScale(Number(e.target.value) / 100)}
+              style={{ flex: 1, accentColor: COLORS.accent }} />
+            <span style={{ color: COLORS.accent, fontSize: 11, fontFamily: "monospace", minWidth: 36, textAlign: "right" }}>{unitScale.toFixed(2)}×</span>
+          </div>
+
           {/* Per-piece string lengths summary */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, color: COLORS.textDim, letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>String Lengths</div>
@@ -352,7 +378,7 @@ function PerspectiveSculptor() {
                       <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
                       <span style={{ color: COLORS.text, fontSize: 11, fontWeight: 500 }}>{p.id}</span>
                       <span style={{ color: COLORS.textDim, fontSize: 10, marginLeft: "auto" }}>
-                        L:{sl.left}mm &nbsp; R:{sl.right}mm
+                        L:{Math.round(sl.left * unitScale)}mm &nbsp; R:{Math.round(sl.right * unitScale)}mm
                       </span>
                     </div>
                   );
@@ -378,12 +404,12 @@ function PerspectiveSculptor() {
               padding: "8px 20px", fontFamily: "monospace", fontSize: 10,
               letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", transition: "background 0.2s",
             }}>{copyFeedback ? "Copied!" : "Copy JSON"}</button>
-            <button onClick={() => downloadSVG(generateLaserCutSVG(pieces))} style={{
+            <button onClick={() => downloadSVG(generateLaserCutSVG(pieces, unitScale))} style={{
               background: COLORS.accent, color: COLORS.bg, border: "none",
               padding: "8px 20px", fontFamily: "monospace", fontSize: 10,
               letterSpacing: 2, textTransform: "uppercase", cursor: "pointer",
             }}>Download SVG (Laser Cut)</button>
-            <button onClick={() => downloadSVG(generateGridSVG(pieces), "forma-grid.svg")} style={{
+            <button onClick={() => downloadSVG(generateGridSVG(pieces, unitScale), "forma-grid.svg")} style={{
               background: COLORS.accent, color: COLORS.bg, border: "none",
               padding: "8px 20px", fontFamily: "monospace", fontSize: 10,
               letterSpacing: 2, textTransform: "uppercase", cursor: "pointer",

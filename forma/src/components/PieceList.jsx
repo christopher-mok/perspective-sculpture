@@ -3,7 +3,7 @@ import { getFrameBounds, getStringLengths } from "../utils/strings";
 import { EditableValue } from "./EditableValue";
 import { EditableXYZ } from "./EditableXYZ";
 
-export function PieceList({ pieces, selectedPiece, onSelectPiece, onUpdatePiece, onAddPiece, onDuplicatePiece, onRemovePiece }) {
+export function PieceList({ pieces, selectedPiece, onSelectPiece, onUpdatePiece, onAddPiece, onDuplicatePiece, onRemovePiece, unitScale = 1 }) {
   const piece = pieces[selectedPiece];
   return (
     <div style={{ background: COLORS.panel, height: "100%", overflowY: "auto", fontFamily: "monospace", fontSize: 10, display: "flex", flexDirection: "column" }}>
@@ -92,25 +92,25 @@ export function PieceList({ pieces, selectedPiece, onSelectPiece, onUpdatePiece,
           <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, padding: 10, marginBottom: 10 }}>
             <div style={{ color: COLORS.accent, fontSize: 8, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Fabrication Info</div>
             <div style={{ color: COLORS.textDim, fontSize: 9, lineHeight: 1.8 }}>
-              <div>Bounding tube: <span style={{ color: COLORS.text }}>{(piece.sizeCm || 5).toFixed(1)} × {(piece.sizeCm || 5).toFixed(1)} cm</span></div>
-              <div>Material: <span style={{ color: COLORS.text }}>{(piece.thickness || 3).toFixed(1)} mm</span></div>
+              <div>Bounding tube: <span style={{ color: COLORS.text }}>{((piece.sizeCm || 5) * unitScale).toFixed(1)} × {((piece.sizeCm || 5) * unitScale).toFixed(1)} cm</span></div>
+              <div>Material: <span style={{ color: COLORS.text }}>{((piece.thickness || 3) * unitScale).toFixed(1)} mm</span></div>
               {(() => {
                 const fb = getFrameBounds(pieces);
                 const sl = getStringLengths(piece, fb.frameY);
                 return <>
-                  <div>Frame: <span style={{ color: COLORS.text }}>{Math.round(fb.size)} × {Math.round(fb.size)} mm</span></div>
-                  <div>Strings: <span style={{ color: COLORS.orange }}>L ≈ {sl.left}mm · R ≈ {sl.right}mm</span></div>
+                  <div>Frame: <span style={{ color: COLORS.text }}>{Math.round(fb.size * unitScale)} × {Math.round(fb.size * unitScale)} mm</span></div>
+                  <div>Strings: <span style={{ color: COLORS.orange }}>L ≈ {Math.round(sl.left * unitScale)}mm · R ≈ {Math.round(sl.right * unitScale)}mm</span></div>
                 </>;
               })()}
             </div>
           </div>
         </div>
       )}
-      <div style={{ padding: "10px 14px", borderTop: `1px solid ${COLORS.panelBorder}`, display: "flex", gap: 6 }}>
-        <button onClick={onAddPiece} style={{ flex: 1, background: COLORS.accent, color: COLORS.bg, border: "none", padding: "6px 0", fontFamily: "monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>+ Add</button>
-        <button onClick={() => onDuplicatePiece(selectedPiece)} style={{ flex: 1, background: "transparent", color: COLORS.accent, border: `1px solid ${COLORS.accent}`, padding: "6px 0", fontFamily: "monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>Duplicate</button>
+      <div style={{ padding: "10px 14px", borderTop: `1px solid ${COLORS.panelBorder}`, display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button onClick={onAddPiece} style={{ flex: "1 1 0", background: COLORS.accent, color: COLORS.bg, border: "none", padding: "6px 0", fontFamily: "monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>+ Add</button>
+        <button onClick={() => onDuplicatePiece(selectedPiece)} style={{ flex: "1 1 0", background: "transparent", color: COLORS.accent, border: `1px solid ${COLORS.accent}`, padding: "6px 0", fontFamily: "monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>Duplicate</button>
         {pieces.length > 1 && (
-          <button onClick={() => onRemovePiece(selectedPiece)} style={{ background: "transparent", color: COLORS.red, border: `1px solid ${COLORS.red}40`, padding: "6px 10px", fontFamily: "monospace", fontSize: 9, cursor: "pointer" }}>×</button>
+          <button onClick={() => onRemovePiece(selectedPiece)} style={{ flexBasis: "100%", background: "transparent", color: COLORS.red, border: `1px solid ${COLORS.red}40`, padding: "6px 0", fontFamily: "monospace", fontSize: 9, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>Delete Piece</button>
         )}
       </div>
     </div>
