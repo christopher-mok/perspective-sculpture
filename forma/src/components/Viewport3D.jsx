@@ -5,7 +5,7 @@ import { getFrameBounds, getAttachmentPoints } from "../utils/strings";
 import { useResizableCanvas } from "../hooks/useResizableCanvas";
 import { ViewportLabel } from "./ViewportLabel";
 
-const SHAPE_SCALE = 0.5;
+const SHAPE_SCALE = 1.0;
 
 export function Viewport3D({ pieces, selectedPiece, onSelectPiece }) {
   const canvasRef = useRef(null);

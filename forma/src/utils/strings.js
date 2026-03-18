@@ -5,6 +5,8 @@ import { getBoundingRadius } from "./collision";
 const FRAME_MARGIN = 80;
 // Padding around pieces for the frame edges
 const FRAME_PADDING = 30;
+// Default grid size: 12 × 12 inches = 30.48 cm = 304.8 mm
+const DEFAULT_GRID_SIZE = 304.8;
 
 // Compute the frame Y position (the horizontal grid above all pieces).
 export function getFrameY(pieces) {
@@ -20,7 +22,7 @@ export function getFrameBounds(pieces) {
   const frameY = getFrameY(pieces);
 
   if (pieces.length === 0) {
-    return { centerX: 0, centerZ: 150, size: 200, frameY };
+    return { centerX: 0, centerZ: 150, size: DEFAULT_GRID_SIZE, frameY };
   }
 
   // Compute XZ bounding box including each piece's shape radius
@@ -40,10 +42,10 @@ export function getFrameBounds(pieces) {
   minZ -= FRAME_PADDING;
   maxZ += FRAME_PADDING;
 
-  // Make it square — use the larger dimension
+  // Make it square — use at least the default grid size (12×12 inches)
   const extentX = maxX - minX;
   const extentZ = maxZ - minZ;
-  const size = Math.max(extentX, extentZ);
+  const size = Math.max(extentX, extentZ, DEFAULT_GRID_SIZE);
 
   const centerX = (minX + maxX) / 2;
   const centerZ = (minZ + maxZ) / 2;
@@ -79,7 +81,7 @@ function findTopYAtX(curve, sc, targetX) {
 // Returns { left: {x,y,z}, right: {x,y,z} } in world coordinates.
 // The y of each attachment point is the actual contact point where a vertical
 // string meets the top of the shape at that string's x position.
-export function getAttachmentPoints(piece, shapeScale = 0.5) {
+export function getAttachmentPoints(piece, shapeScale = 1.0) {
   // Use higher sample count for accurate contact-point interpolation
   const curve = generateSplineCurve(piece.controlPoints, 32);
   const sc = piece.scale * shapeScale;
@@ -174,7 +176,7 @@ function dist3D(ax, ay, az, bx, by, bz) {
 
 // Compute the two string lengths for a piece.
 // Each string goes from the frame (at frameY, directly above the attachment point's XZ) down to the attachment point.
-export function getStringLengths(piece, frameY, shapeScale = 0.5) {
+export function getStringLengths(piece, frameY, shapeScale = 1.0) {
   const { left, right } = getAttachmentPoints(piece, shapeScale);
   return {
     left: Math.round(dist3D(left.x, frameY, left.z, left.x, left.y, left.z)),

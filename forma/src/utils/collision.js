@@ -11,79 +11,77 @@ export function getBoundingRadius(piece) {
   return Math.sqrt(maxR2);
 }
 
-// Check if two pieces collide in 3D space.
-// Each piece is a flat shape at (x, y, z) with a bounding radius and thickness along its local Z.
-// We use bounding spheres: radius = max(shapeRadius, thickness/2) for a conservative check.
+// Check if two flat pieces collide.
+// Pieces are thin 2D shapes — check XY overlap (shape radii) AND Z overlap (thickness) separately.
 function piecesCollide(a, b) {
   const ra = getBoundingRadius(a);
   const rb = getBoundingRadius(b);
-  const ta = (a.thickness || 2) / 2;
-  const tb = (b.thickness || 2) / 2;
-  // Effective collision radius: shape radius in XY, plus half-thickness for Z extent
-  const boundA = Math.sqrt(ra * ra + ta * ta);
-  const boundB = Math.sqrt(rb * rb + tb * tb);
   const dx = a.x - b.x;
   const dy = a.y - b.y;
-  const dz = a.z - b.z;
-  const dist2 = dx * dx + dy * dy + dz * dz;
-  const minDist = boundA + boundB;
-  return dist2 < minDist * minDist;
+  const xyDist2 = dx * dx + dy * dy;
+  const minXY = ra + rb;
+  if (xyDist2 >= minXY * minXY) return false;
+
+  const ta = (a.thickness || 2) / 2;
+  const tb = (b.thickness || 2) / 2;
+  const zGap = Math.abs(a.z - b.z);
+  return zGap < ta + tb + ra + rb;
 }
 
 // Resolve position for a piece at `movingIndex` with proposed updates.
 // Returns adjusted updates that avoid collision with all other pieces.
-// Strategy: if colliding, push the moved piece away from the collider along the line between centers.
+// Uses separate XY (shape radius) and Z (thickness) checks for flat pieces.
 export function resolveCollisions(pieces, movingIndex, updates) {
   const moving = { ...pieces[movingIndex], ...updates };
   const ra = getBoundingRadius(moving);
-  const ta = (moving.thickness || 2) / 2;
-  const boundA = Math.sqrt(ra * ra + ta * ta);
 
   const hasX = "x" in updates;
   const hasY = "y" in updates;
   const hasZ = "z" in updates;
 
   let { x, y, z } = moving;
-  // Iterate a few times to resolve cascading overlaps
   for (let iter = 0; iter < 5; iter++) {
     let resolved = true;
     for (let i = 0; i < pieces.length; i++) {
       if (i === movingIndex) continue;
       const other = pieces[i];
       const rb = getBoundingRadius(other);
-      const tb = (other.thickness || 2) / 2;
-      const boundB = Math.sqrt(rb * rb + tb * tb);
-      const minDist = boundA + boundB;
+      const minXY = ra + rb;
 
       const dx = x - other.x;
       const dy = y - other.y;
-      const dz = z - other.z;
-      const dist2 = dx * dx + dy * dy + dz * dz;
+      const xyDist2 = dx * dx + dy * dy;
 
-      if (dist2 < minDist * minDist) {
-        resolved = false;
-        const dist = Math.sqrt(dist2);
-        if (dist < 0.01) {
-          // Pieces are at the same position — push along the axes being updated
-          if (hasX) x += minDist;
-          else if (hasY) y += minDist;
-          else if (hasZ) z += minDist;
+      const ta = (moving.thickness || 2) / 2;
+      const tb = (other.thickness || 2) / 2;
+      const dz = z - other.z;
+      const minZ = ta + tb;
+
+      // Only collide if overlapping in BOTH XY and Z
+      const xyOverlap = xyDist2 < minXY * minXY;
+      const zOverlap = Math.abs(dz) < minZ;
+      if (!xyOverlap || !zOverlap) continue;
+
+      resolved = false;
+      if (hasX || hasY) {
+        const xyDist = Math.sqrt(xyDist2);
+        if (xyDist < 0.01) {
+          if (hasX) x += minXY;
+          else y += minXY;
         } else {
-          // Push only along the axes being updated
-          const pushDist = minDist - dist;
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const nz = dz / dist;
-          if (hasX) x += nx * pushDist;
-          if (hasY) y += ny * pushDist;
-          if (hasZ) z += nz * pushDist;
+          const push = minXY - xyDist;
+          if (hasX) x += (dx / xyDist) * push;
+          if (hasY) y += (dy / xyDist) * push;
         }
+      }
+      if (hasZ) {
+        const push = minZ - Math.abs(dz);
+        z += (dz >= 0 ? 1 : -1) * push;
       }
     }
     if (resolved) break;
   }
 
-  // Only include axes that were in the original updates
   const result = { ...updates };
   if (hasX) result.x = Math.round(x);
   if (hasY) result.y = Math.round(y);
