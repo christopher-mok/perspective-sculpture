@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1096.2mm" height="1096.2mm" viewBox="0 0 1096.2 1096.2">
+  <title>FORMA Grid Layout</title>
+  <desc>Hanging grid — 8 pieces, frame 1066×1066mm</desc>
+  <rect x="15.0" y="15.0" width="1066.2" height="1066.2" fill="none" stroke="#333" stroke-width="0.4" />
+  <text x="548.1" y="11.0" text-anchor="middle" font-family="monospace" font-size="4.5" fill="#333">1066 × 1066 mm</text>
+  <rect x="411.52" y="444.67" width="26.09" height="6.00" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="414.52" cy="447.67" r="1.2" fill="#333" />
+  <circle cx="434.61" cy="447.67" r="1.2" fill="#333" />
+  <text x="412.32" y="448.87" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="436.81" y="448.87" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="424.57" y="442.67" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P02</text>
+  <text x="424.57" y="454.17" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:213mm  R:195mm</text>
+  <rect x="820.95" y="507.67" width="21.92" height="6.00" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="823.95" cy="510.67" r="1.2" fill="#333" />
+  <circle cx="839.87" cy="510.67" r="1.2" fill="#333" />
+  <text x="821.75" y="511.87" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="842.07" y="511.87" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="831.91" y="505.67" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P02</text>
+  <text x="831.91" y="517.17" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:246mm  R:253mm</text>
+  <rect x="477.33" y="500.34" width="92.98" height="48.02" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="480.33" cy="545.36" r="1.2" fill="#333" />
+  <circle cx="567.31" cy="503.34" r="1.2" fill="#333" />
+  <text x="478.13" y="546.56" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="569.51" y="504.54" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="523.82" y="498.34" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P03</text>
+  <text x="523.82" y="551.86" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:64mm  R:67mm</text>
+  <rect x="708.16" y="661.37" width="45.30" height="49.84" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="711.16" cy="708.21" r="1.2" fill="#333" />
+  <circle cx="750.45" cy="664.37" r="1.2" fill="#333" />
+  <text x="708.96" y="709.41" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="752.65" y="665.57" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="730.80" y="659.37" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P04</text>
+  <text x="730.80" y="714.71" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:39mm  R:65mm</text>
+  <rect x="561.29" y="604.67" width="106.48" height="6.00" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="564.29" cy="607.67" r="1.2" fill="#333" />
+  <circle cx="664.77" cy="607.67" r="1.2" fill="#333" />
+  <text x="562.09" y="608.87" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="666.97" y="608.87" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="614.53" y="602.67" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P05</text>
+  <text x="614.53" y="614.17" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:30mm  R:31mm</text>
+  <rect x="551.48" y="626.03" width="57.21" height="50.91" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="554.48" cy="629.03" r="1.2" fill="#333" />
+  <circle cx="605.69" cy="673.95" r="1.2" fill="#333" />
+  <text x="552.28" y="630.23" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="607.89" y="675.15" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="580.08" y="624.03" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P06</text>
+  <text x="580.08" y="680.45" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:141mm  R:136mm</text>
+  <rect x="613.98" y="535.67" width="54.80" height="6.00" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="616.98" cy="538.67" r="1.2" fill="#333" />
+  <circle cx="665.78" cy="538.67" r="1.2" fill="#333" />
+  <text x="614.78" y="539.87" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="667.98" y="539.87" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="641.38" y="533.67" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P07</text>
+  <text x="641.38" y="545.17" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:139mm  R:150mm</text>
+  <rect x="609.75" y="837.67" width="47.89" height="6.00" fill="none" stroke="#333" stroke-width="0.25" rx="0.5" />
+  <circle cx="612.75" cy="840.67" r="1.2" fill="#333" />
+  <circle cx="654.64" cy="840.67" r="1.2" fill="#333" />
+  <text x="610.55" y="841.87" text-anchor="end" font-family="monospace" font-size="2.8" fill="#333">L</text>
+  <text x="656.84" y="841.87" text-anchor="start" font-family="monospace" font-size="2.8" fill="#333">R</text>
+  <text x="633.70" y="835.67" text-anchor="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="#333">P08</text>
+  <text x="633.70" y="847.17" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#333">L:157mm  R:168mm</text>
+</svg>
