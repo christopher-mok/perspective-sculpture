@@ -38,18 +38,23 @@ function getPaddedXZBounds(pieces) {
 }
 
 // Compute the frame Y position (the horizontal grid above all pieces).
-// Measures from the actual top of each piece's shape, not just piece.y.
+// The top/grid should be 1/3 of the sculpture's total height above the highest piece.
 export function getFrameY(pieces) {
   if (pieces.length === 0) return -MIN_CLEARANCE;
   let topmost = Infinity;
+  let bottommost = -Infinity;
   for (const p of pieces) {
     const curve = generateSplineCurve(p.controlPoints, 8);
     for (const pt of curve) {
       const worldY = p.y + pt.y * p.scale;
       if (worldY < topmost) topmost = worldY;
+      if (worldY > bottommost) bottommost = worldY;
     }
   }
-  return topmost - MIN_CLEARANCE;
+  const height = bottommost - topmost;
+  if (height <= 0) return topmost - MIN_CLEARANCE;
+  const clearance = height / 3;
+  return topmost - clearance;
 }
 
 // Compute the square frame bounds that contain all pieces.
