@@ -3,7 +3,7 @@ import { COLORS, CAMERA, PIECE_COLORS } from "./constants/theme";
 import { circlePoints } from "./utils/geometry";
 import { storage } from "./utils/storage";
 import { resolveCollisions } from "./utils/collision";
-import { getFrameBounds, getStringLengths } from "./utils/strings";
+import { getFrameBounds, getFrameContentSize, getFrameFootprintSize, getFramePadding, getStringLengths } from "./utils/strings";
 import { makeInitialPieces } from "./data/pieces";
 import { Viewport3D } from "./components/Viewport3D";
 import { PerspectivePreview } from "./components/PerspectivePreview";
@@ -13,6 +13,19 @@ import { ReferenceImagePanel } from "./components/ReferenceImagePanel";
 import { PieceList } from "./components/PieceList";
 import { SaveDialog } from "./components/SaveDialog";
 import { generateLaserCutSVG, generateGridSVG, downloadSVG } from "./utils/svgExport";
+
+const MM_PER_INCH = 25.4;
+const MAX_HANGING_PLANE_INPUT = 10;
+const MAX_HANGING_PLANE_OUTPUT_IN = 12;
+
+function toMmFactor(unitLike) {
+  const unit = String(unitLike || "mm").trim().toLowerCase();
+  if (unit === "mm" || unit === "millimeter" || unit === "millimeters") return 1;
+  if (unit === "cm" || unit === "centimeter" || unit === "centimeters") return 10;
+  if (unit === "m" || unit === "meter" || unit === "meters") return 1000;
+  if (unit === "in" || unit === "inch" || unit === "inches") return MM_PER_INCH;
+  return 1;
+}
 
 function PerspectiveSculptor() {
   const [pieces, setPieces] = useState(makeInitialPieces);
@@ -107,48 +120,98 @@ function PerspectiveSculptor() {
     setActiveTab("design");
   }, []);
 
+  const importDesignFromParsed = useCallback((parsed, options = {}) => {
+    setImportError("");
+    if (!parsed || !parsed.pieces || !Array.isArray(parsed.pieces)) {
+      setImportError("Invalid format: JSON must contain a 'pieces' array");
+      return;
+    }
+
+    // Get overall sculpture scale if provided at root level
+    const overallScale = parsed.scale || 1.0;
+    const coordinateUnit = parsed.coordinateUnit || parsed.positionUnit || parsed.units || "mm";
+    const coordToMm = toMmFactor(coordinateUnit);
+
+    let reconstructedPieces = parsed.pieces.map(p => {
+      const controlPoints = (p.controlPoints || []).map(cp => ({
+        x: (cp.x || 0) * coordToMm,
+        y: (cp.y || 0) * coordToMm,
+        hInX: (cp.handleIn?.x || cp.hInX || 0) * coordToMm,
+        hInY: (cp.handleIn?.y || cp.hInY || 0) * coordToMm,
+        hOutX: (cp.handleOut?.x || cp.hOutX || 0) * coordToMm,
+        hOutY: (cp.handleOut?.y || cp.hOutY || 0) * coordToMm,
+      }));
+      return {
+        id: p.id || `P${Math.random().toString(36).substr(2, 9)}`,
+        x: (p.position?.x || p.x || 0) * overallScale * coordToMm,
+        y: (p.position?.y || p.y || 0) * overallScale * coordToMm,
+        z: (p.position?.z || p.z || 0) * overallScale * coordToMm,
+        scale: (p.scale || 1.0) * overallScale,
+        theta: p.theta || 0,
+        color: p.color || PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)],
+        sizeCm: p.sizeCm || 5,
+        thickness: p.thickness || 3,
+        controlPoints: controlPoints.length > 0 ? controlPoints : circlePoints(),
+      };
+    });
+
+    const hangingPlaneSizeInput = Number(parsed.hangingPlaneSize);
+    if (options.fromApi && Number.isFinite(hangingPlaneSizeInput) && hangingPlaneSizeInput > 0 && reconstructedPieces.length > 0) {
+      const normalizedInput = Math.min(hangingPlaneSizeInput, MAX_HANGING_PLANE_INPUT);
+      const targetInches = normalizedInput * (MAX_HANGING_PLANE_OUTPUT_IN / MAX_HANGING_PLANE_INPUT);
+      const targetFootprintMm = targetInches * MM_PER_INCH;
+      const currentContent = getFrameContentSize(reconstructedPieces);
+      const currentFootprint = getFrameFootprintSize(reconstructedPieces);
+      const totalPaddingMm = getFramePadding() * 2;
+      let fitScale = 1;
+
+      if (targetFootprintMm > totalPaddingMm && currentContent > 0) {
+        // Solve for scale in: scaledContent + (2 * padding) = targetFootprintMm
+        fitScale = (targetFootprintMm - totalPaddingMm) / currentContent;
+      } else if (targetFootprintMm > 0 && currentFootprint > 0) {
+        // Fallback when target is smaller than the fixed frame padding envelope.
+        fitScale = targetFootprintMm / currentFootprint;
+      }
+
+      if (Number.isFinite(fitScale) && fitScale > 0) {
+        reconstructedPieces = reconstructedPieces.map((p) => ({
+          ...p,
+          x: p.x * fitScale,
+          y: p.y * fitScale,
+          z: p.z * fitScale,
+          scale: p.scale * fitScale,
+          sizeCm: p.sizeCm * fitScale,
+          thickness: p.thickness * fitScale,
+        }));
+      }
+    }
+
+    setPieces(reconstructedPieces);
+    setImportJSON("");
+    setSelectedPiece(0);
+    setActiveTab("design");
+  }, []);
+
   const importDesignFromJSON = useCallback(() => {
     setImportError("");
     try {
       const parsed = JSON.parse(importJSON);
-      if (!parsed.pieces || !Array.isArray(parsed.pieces)) {
-        setImportError("Invalid format: JSON must contain a 'pieces' array");
-        return;
-      }
-      
-      // Get overall sculpture scale if provided at root level
-      const overallScale = parsed.scale || 1.0;
-      
-      const reconstructedPieces = parsed.pieces.map(p => {
-        const controlPoints = (p.controlPoints || []).map(cp => ({
-          x: cp.x,
-          y: cp.y,
-          hInX: cp.handleIn?.x || cp.hInX || 0,
-          hInY: cp.handleIn?.y || cp.hInY || 0,
-          hOutX: cp.handleOut?.x || cp.hOutX || 0,
-          hOutY: cp.handleOut?.y || cp.hOutY || 0,
-        }));
-        return {
-          id: p.id || `P${Math.random().toString(36).substr(2, 9)}`,
-          x: (p.position?.x || p.x || 0) * overallScale,
-          y: (p.position?.y || p.y || 0) * overallScale,
-          z: (p.position?.z || p.z || 0) * overallScale,
-          scale: (p.scale || 1.0) * overallScale,
-          theta: p.theta || 0,
-          color: p.color || PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)],
-          sizeCm: p.sizeCm || 5,
-          thickness: p.thickness || 3,
-          controlPoints: controlPoints.length > 0 ? controlPoints : circlePoints(),
-        };
-      });
-      setPieces(reconstructedPieces);
-      setImportJSON("");
-      setSelectedPiece(0);
-      setActiveTab("design");
+      importDesignFromParsed(parsed);
     } catch (e) {
       setImportError(`Parse error: ${e.message}`);
     }
-  }, [importJSON]);
+  }, [importJSON, importDesignFromParsed]);
+
+  useEffect(() => {
+    if (!import.meta.hot) return;
+    const onRemoteImport = (payload) => {
+      importDesignFromParsed(payload, { fromApi: true });
+    };
+    import.meta.hot.on("forma:import", onRemoteImport);
+    return () => {
+      import.meta.hot.off?.("forma:import", onRemoteImport);
+    };
+  }, [importDesignFromParsed]);
 
   const deleteSaved = useCallback(async (index) => {
     const d = savedDesigns[index];
@@ -402,8 +465,11 @@ function PerspectiveSculptor() {
             </div>
             <div style={{ marginTop: 10 }}>
               <div>• scale (root): multiplies all positions & scales (optional, default 1.0)</div>
+              <div>• hangingPlaneSize: API input 0-10 maps to output 0-12 inches (10 → 12in)</div>
+              <div>• coordinateUnit: optional <code>mm</code>, <code>cm</code>, or <code>in</code> for API coordinates</div>
               <div>• controlPoints: optional, auto-generates circles if omitted</div>
               <div>• handleIn/handleOut: control bezier curve tangents</div>
+              <div>• Dev API: POST JSON to <code>/api/import</code> while Vite dev server is running</div>
             </div>
           </div>
 

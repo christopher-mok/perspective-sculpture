@@ -8,6 +8,35 @@ const FRAME_PADDING = 30;
 // Default grid size: 12 × 12 inches = 30.48 cm = 304.8 mm
 const DEFAULT_GRID_SIZE = 304.8;
 
+function getRawXZBounds(pieces) {
+  let minX = Infinity, maxX = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const p of pieces) {
+    const r = getBoundingRadius(p);
+    minX = Math.min(minX, p.x - r);
+    maxX = Math.max(maxX, p.x + r);
+    minZ = Math.min(minZ, p.z - r);
+    maxZ = Math.max(maxZ, p.z + r);
+  }
+
+  const extentX = maxX - minX;
+  const extentZ = maxZ - minZ;
+  const size = Math.max(extentX, extentZ);
+
+  return { minX, maxX, minZ, maxZ, size };
+}
+
+function getPaddedXZBounds(pieces) {
+  const raw = getRawXZBounds(pieces);
+  return {
+    minX: raw.minX - FRAME_PADDING,
+    maxX: raw.maxX + FRAME_PADDING,
+    minZ: raw.minZ - FRAME_PADDING,
+    maxZ: raw.maxZ + FRAME_PADDING,
+    size: raw.size + FRAME_PADDING * 2,
+  };
+}
+
 // Compute the frame Y position (the horizontal grid above all pieces).
 // Measures from the actual top of each piece's shape, not just piece.y.
 export function getFrameY(pieces) {
@@ -33,32 +62,31 @@ export function getFrameBounds(pieces) {
     return { centerX: 0, centerZ: 150, size: DEFAULT_GRID_SIZE, frameY };
   }
 
-  // Compute XZ bounding box including each piece's shape radius
-  let minX = Infinity, maxX = -Infinity;
-  let minZ = Infinity, maxZ = -Infinity;
-  for (const p of pieces) {
-    const r = getBoundingRadius(p);
-    minX = Math.min(minX, p.x - r);
-    maxX = Math.max(maxX, p.x + r);
-    minZ = Math.min(minZ, p.z - r);
-    maxZ = Math.max(maxZ, p.z + r);
-  }
+  const bounds = getPaddedXZBounds(pieces);
+  // Make it square using the padded footprint of all pieces.
+  const size = bounds.size;
 
-  // Add padding
-  minX -= FRAME_PADDING;
-  maxX += FRAME_PADDING;
-  minZ -= FRAME_PADDING;
-  maxZ += FRAME_PADDING;
-
-  // Make it square — use at least the default grid size (12×12 inches)
-  const extentX = maxX - minX;
-  const extentZ = maxZ - minZ;
-  const size = Math.max(extentX, extentZ, DEFAULT_GRID_SIZE);
-
-  const centerX = (minX + maxX) / 2;
-  const centerZ = (minZ + maxZ) / 2;
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerZ = (bounds.minZ + bounds.maxZ) / 2;
 
   return { centerX, centerZ, size, frameY };
+}
+
+// Compute the raw square footprint in XZ, including padding, without
+// enforcing the default minimum frame size.
+export function getFrameFootprintSize(pieces) {
+  if (pieces.length === 0) return DEFAULT_GRID_SIZE;
+  return getPaddedXZBounds(pieces).size;
+}
+
+// Compute the raw square content footprint in XZ (no frame padding).
+export function getFrameContentSize(pieces) {
+  if (pieces.length === 0) return DEFAULT_GRID_SIZE;
+  return getRawXZBounds(pieces).size;
+}
+
+export function getFramePadding() {
+  return FRAME_PADDING;
 }
 
 // Find the topmost (minimum) y on the shape curve at a given x, by interpolating
