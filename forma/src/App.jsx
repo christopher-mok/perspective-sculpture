@@ -115,6 +115,10 @@ function PerspectiveSculptor() {
         setImportError("Invalid format: JSON must contain a 'pieces' array");
         return;
       }
+      
+      // Get overall sculpture scale if provided at root level
+      const overallScale = parsed.scale || 1.0;
+      
       const reconstructedPieces = parsed.pieces.map(p => {
         const controlPoints = (p.controlPoints || []).map(cp => ({
           x: cp.x,
@@ -126,10 +130,10 @@ function PerspectiveSculptor() {
         }));
         return {
           id: p.id || `P${Math.random().toString(36).substr(2, 9)}`,
-          x: p.position?.x || p.x || 0,
-          y: p.position?.y || p.y || 0,
-          z: p.position?.z || p.z || 0,
-          scale: p.scale || 1.0,
+          x: (p.position?.x || p.x || 0) * overallScale,
+          y: (p.position?.y || p.y || 0) * overallScale,
+          z: (p.position?.z || p.z || 0) * overallScale,
+          scale: (p.scale || 1.0) * overallScale,
           theta: p.theta || 0,
           color: p.color || PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)],
           sizeCm: p.sizeCm || 5,
@@ -376,8 +380,31 @@ function PerspectiveSculptor() {
       {activeTab === "import" && (
         <div style={{ overflow: "auto", padding: 30, fontFamily: "monospace", display: "flex", flexDirection: "column" }}>
           <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 18, color: COLORS.accent, letterSpacing: 4, textTransform: "uppercase", marginBottom: 8 }}>Import Design</div>
-          <div style={{ color: COLORS.textDim, fontSize: 10, marginBottom: 16 }}>
-            Paste a design JSON here to load it. Accepts forma-sculpture-v1 format or any JSON with a pieces array.
+          <div style={{ color: COLORS.textDim, fontSize: 10, marginBottom: 16, lineHeight: 1.6 }}>
+            Paste a design JSON. Format:
+            <div style={{ color: COLORS.text, background: COLORS.panel, padding: 10, marginTop: 8, borderRadius: 3, fontSize: 9, maxHeight: 150, overflow: "auto" }}>
+              {`{
+  "scale": 1.0,
+  "pieces": [
+    {
+      "id": "P01",
+      "position": {"x": -60, "y": -40, "z": 80},
+      "scale": 1.0,
+      "theta": 0,
+      "color": "#ff0000",
+      "controlPoints": [
+        {"x": 40, "y": 0, "handleIn": {"x": 0, "y": 27}, "handleOut": {"x": 0, "y": -27}},
+        ...
+      ]
+    }
+  ]
+}`}
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <div>• scale (root): multiplies all positions & scales (optional, default 1.0)</div>
+              <div>• controlPoints: optional, auto-generates circles if omitted</div>
+              <div>• handleIn/handleOut: control bezier curve tangents</div>
+            </div>
           </div>
 
           {importError && (
@@ -392,7 +419,7 @@ function PerspectiveSculptor() {
           <textarea
             value={importJSON}
             onChange={(e) => setImportJSON(e.target.value)}
-            placeholder={'Paste JSON here, e.g. {"pieces": [...]}'}
+            placeholder={'Paste JSON here, e.g. {"scale": 1.0, "pieces": [...]}'}
             style={{
               flex: 1, minHeight: 300, background: COLORS.panel, color: COLORS.text,
               border: `1px solid ${COLORS.panelBorder}`, padding: 16,
