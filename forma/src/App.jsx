@@ -21,6 +21,8 @@ function PerspectiveSculptor() {
   const [activeTab, setActiveTab] = useState("design");
   const [savedDesigns, setSavedDesigns] = useState([]);
   const [exportJSON, setExportJSON] = useState("");
+  const [importJSON, setImportJSON] = useState("");
+  const [importError, setImportError] = useState("");
   const [saveName, setSaveName] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
@@ -105,6 +107,45 @@ function PerspectiveSculptor() {
     setActiveTab("design");
   }, []);
 
+  const importDesignFromJSON = useCallback(() => {
+    setImportError("");
+    try {
+      const parsed = JSON.parse(importJSON);
+      if (!parsed.pieces || !Array.isArray(parsed.pieces)) {
+        setImportError("Invalid format: JSON must contain a 'pieces' array");
+        return;
+      }
+      const reconstructedPieces = parsed.pieces.map(p => {
+        const controlPoints = (p.controlPoints || []).map(cp => ({
+          x: cp.x,
+          y: cp.y,
+          hInX: cp.handleIn?.x || cp.hInX || 0,
+          hInY: cp.handleIn?.y || cp.hInY || 0,
+          hOutX: cp.handleOut?.x || cp.hOutX || 0,
+          hOutY: cp.handleOut?.y || cp.hOutY || 0,
+        }));
+        return {
+          id: p.id || `P${Math.random().toString(36).substr(2, 9)}`,
+          x: p.position?.x || p.x || 0,
+          y: p.position?.y || p.y || 0,
+          z: p.position?.z || p.z || 0,
+          scale: p.scale || 1.0,
+          theta: p.theta || 0,
+          color: p.color || PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)],
+          sizeCm: p.sizeCm || 5,
+          thickness: p.thickness || 3,
+          controlPoints: controlPoints.length > 0 ? controlPoints : circlePoints(),
+        };
+      });
+      setPieces(reconstructedPieces);
+      setImportJSON("");
+      setSelectedPiece(0);
+      setActiveTab("design");
+    } catch (e) {
+      setImportError(`Parse error: ${e.message}`);
+    }
+  }, [importJSON]);
+
   const deleteSaved = useCallback(async (index) => {
     const d = savedDesigns[index];
     if (d && d._key) {
@@ -181,6 +222,7 @@ function PerspectiveSculptor() {
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
           <span onClick={() => setActiveTab("design")} style={tabStyle("design")}>Design</span>
           <span onClick={() => setActiveTab("saved")} style={tabStyle("saved")}>Saved{savedDesigns.length > 0 ? ` (${savedDesigns.length})` : ""}</span>
+          <span onClick={() => setActiveTab("import")} style={tabStyle("import")}>Import</span>
           <span onClick={() => { setExportJSON(buildExportJSON()); setActiveTab("export"); }} style={tabStyle("export")}>Export</span>
           <div style={{ marginLeft: 16, display: "flex", gap: 6 }}>
             <button onClick={() => setShowSaveDialog(true)} style={{ background: "transparent", border: `1px solid ${COLORS.panelBorder}`, color: COLORS.textDim, padding: "5px 14px", fontFamily: "monospace", fontSize: 9, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase" }}>Save</button>
@@ -328,6 +370,54 @@ function PerspectiveSculptor() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === "import" && (
+        <div style={{ overflow: "auto", padding: 30, fontFamily: "monospace", display: "flex", flexDirection: "column" }}>
+          <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 18, color: COLORS.accent, letterSpacing: 4, textTransform: "uppercase", marginBottom: 8 }}>Import Design</div>
+          <div style={{ color: COLORS.textDim, fontSize: 10, marginBottom: 16 }}>
+            Paste a design JSON here to load it. Accepts forma-sculpture-v1 format or any JSON with a pieces array.
+          </div>
+
+          {importError && (
+            <div style={{
+              background: "#8B3A3A", color: "#FFB3B3", border: "1px solid #C94545",
+              padding: 12, marginBottom: 16, fontSize: 10, borderRadius: 3,
+            }}>
+              {importError}
+            </div>
+          )}
+
+          <textarea
+            value={importJSON}
+            onChange={(e) => setImportJSON(e.target.value)}
+            placeholder={'Paste JSON here, e.g. {"pieces": [...]}'}
+            style={{
+              flex: 1, minHeight: 300, background: COLORS.panel, color: COLORS.text,
+              border: `1px solid ${COLORS.panelBorder}`, padding: 16,
+              fontFamily: "monospace", fontSize: 10, lineHeight: 1.5,
+              resize: "none", outline: "none", marginBottom: 12,
+            }}
+          />
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={importDesignFromJSON} style={{
+              background: COLORS.accent, color: COLORS.bg, border: "none",
+              padding: "8px 20px", fontFamily: "monospace", fontSize: 10,
+              letterSpacing: 2, textTransform: "uppercase", cursor: "pointer",
+            }}>Load Design</button>
+            <button onClick={() => { setImportJSON(""); setImportError(""); }} style={{
+              background: "transparent", color: COLORS.textDim, border: `1px solid ${COLORS.panelBorder}`,
+              padding: "8px 16px", fontFamily: "monospace", fontSize: 10,
+              letterSpacing: 2, textTransform: "uppercase", cursor: "pointer",
+            }}>Clear</button>
+            <button onClick={() => setActiveTab("design")} style={{
+              background: "transparent", color: COLORS.textDim, border: `1px solid ${COLORS.panelBorder}`,
+              padding: "8px 16px", fontFamily: "monospace", fontSize: 10,
+              letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", marginLeft: "auto",
+            }}>Back to Design</button>
+          </div>
         </div>
       )}
 
