@@ -5,6 +5,8 @@ import { getFrameBounds, getStringLengths, getAttachmentPoints, getLocalContactP
 
 const GRID_PADDING = 10; // mm between pieces
 const LABEL_OFFSET = 4;  // mm below piece for label
+const SVG_OUTLINE_COLOR = "#ff0000";
+const SVG_DETAIL_COLOR = "#000000";
 
 // Build an SVG cubic Bézier path string from control points, scaled to mm.
 function buildBezierPath(controlPoints, scaleFactor) {
@@ -141,15 +143,15 @@ export function generateLaserCutSVG(pieces, unitScale = 1) {
     const tx = cellCx - pieceCx;
     const ty = cellCy - pieceCy;
 
-    paths += `  <path d="${p.pathD}" transform="translate(${tx.toFixed(3)}, ${ty.toFixed(3)})" fill="none" stroke="${p.color}" stroke-width="0.2" />\n`;
+    paths += `  <path d="${p.pathD}" transform="translate(${tx.toFixed(3)}, ${ty.toFixed(3)})" fill="none" stroke="${SVG_OUTLINE_COLOR}" stroke-width="0.2" />\n`;
 
     // Piece ID label centered inside the piece
-    labels += `  <text x="${cellCx.toFixed(1)}" y="${(cellCy + 1).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="${p.color}">${p.id}</text>\n`;
+    labels += `  <text x="${cellCx.toFixed(1)}" y="${(cellCy + 1).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-size="3.5" font-weight="bold" fill="${SVG_DETAIL_COLOR}">${p.id}</text>\n`;
 
     // Info label below piece: dimensions + string lengths
     const labelX = cellCx;
     const labelY = cellCy + p.height / 2 + LABEL_OFFSET;
-    labels += `  <text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="monospace" font-size="2.5" fill="${p.color}">${((p.width).toFixed(1))}×${((p.height).toFixed(1))}mm | L:${p.strings.left}mm R:${p.strings.right}mm</text>\n`;
+    labels += `  <text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="monospace" font-size="2.5" fill="${SVG_DETAIL_COLOR}">${((p.width).toFixed(1))}×${((p.height).toFixed(1))}mm | L:${p.strings.left}mm R:${p.strings.right}mm</text>\n`;
 
     // Contact point markers — dot sits just below the boundary contact point,
     // with a dashed line from above the boundary through the dot and extending a bit further down.
@@ -161,15 +163,15 @@ export function generateLaserCutSVG(pieces, unitScale = 1) {
     const lContactX = p.contactLeft.x + tx;
     const lContactY = p.contactLeft.y + ty; // boundary y
     const lDotY = lContactY + dotOffset;    // dot below boundary (positive y = down in SVG)
-    markers += `  <circle cx="${lContactX.toFixed(2)}" cy="${lDotY.toFixed(2)}" r="0.5" fill="${p.color}" opacity="0.85" />\n`;
-    markers += `  <line x1="${lContactX.toFixed(2)}" y1="${(lContactY - lineAbove).toFixed(2)}" x2="${lContactX.toFixed(2)}" y2="${(lDotY + lineBelow).toFixed(2)}" stroke="${p.color}" stroke-width="0.15" stroke-dasharray="0.4,0.3" />\n`;
+    markers += `  <circle cx="${lContactX.toFixed(2)}" cy="${lDotY.toFixed(2)}" r="0.5" fill="${SVG_DETAIL_COLOR}" opacity="0.85" />\n`;
+    markers += `  <line x1="${lContactX.toFixed(2)}" y1="${(lContactY - lineAbove).toFixed(2)}" x2="${lContactX.toFixed(2)}" y2="${(lDotY + lineBelow).toFixed(2)}" stroke="${SVG_DETAIL_COLOR}" stroke-width="0.15" stroke-dasharray="0.4,0.3" />\n`;
 
     // Right contact
     const rContactX = p.contactRight.x + tx;
     const rContactY = p.contactRight.y + ty;
     const rDotY = rContactY + dotOffset;
-    markers += `  <circle cx="${rContactX.toFixed(2)}" cy="${rDotY.toFixed(2)}" r="0.5" fill="${p.color}" opacity="0.85" />\n`;
-    markers += `  <line x1="${rContactX.toFixed(2)}" y1="${(rContactY - lineAbove).toFixed(2)}" x2="${rContactX.toFixed(2)}" y2="${(rDotY + lineBelow).toFixed(2)}" stroke="${p.color}" stroke-width="0.15" stroke-dasharray="0.4,0.3" />\n`;
+    markers += `  <circle cx="${rContactX.toFixed(2)}" cy="${rDotY.toFixed(2)}" r="0.5" fill="${SVG_DETAIL_COLOR}" opacity="0.85" />\n`;
+    markers += `  <line x1="${rContactX.toFixed(2)}" y1="${(rContactY - lineAbove).toFixed(2)}" x2="${rContactX.toFixed(2)}" y2="${(rDotY + lineBelow).toFixed(2)}" stroke="${SVG_DETAIL_COLOR}" stroke-width="0.15" stroke-dasharray="0.4,0.3" />\n`;
   });
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -204,7 +206,7 @@ export function generateGridSVG(pieces, unitScale = 1) {
   const svgW = scaledSize + GRID_SVG_MARGIN * 2;
   const svgH = scaledSize + GRID_SVG_MARGIN * 2;
 
-  const C = "#333"; // uniform color for all elements
+  const C = SVG_DETAIL_COLOR; // uniform color for all non-outline elements
 
   // Frame rectangle
   let content = "";

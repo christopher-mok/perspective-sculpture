@@ -17,11 +17,19 @@ export const COLORS = {
   purple: "#9a7ad4",
 };
 
-// 50mm focal length on 36mm sensor (full frame) → FOV ≈ 39.6°
+// Match backend scene cameras:
+// - vertical FOV = 50°
+// - aspect ratio = 4:3
 export const CAMERA = {
-  focalLength: 50,         // mm
-  sensorWidth: 36,         // mm (full frame)
-  get fov() { return 2 * Math.atan(this.sensorWidth / (2 * this.focalLength)); },
+  verticalFovDeg: 50,
+  aspect: 4 / 3,
+  sensorWidth: 36,          // mm
+  get sensorHeight() { return this.sensorWidth / this.aspect; }, // mm
+  get focalLength() {
+    const vFovRad = (this.verticalFovDeg * Math.PI) / 180;
+    return this.sensorHeight / (2 * Math.tan(vFovRad / 2));
+  },
+  get fov() { return (this.verticalFovDeg * Math.PI) / 180; }, // radians
   viewerDistance: 1000,     // mm from sculpture center
 };
 

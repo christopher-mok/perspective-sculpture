@@ -27,6 +27,45 @@ function toMmFactor(unitLike) {
   return 1;
 }
 
+function toFiniteNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeAngleRad(theta) {
+  const twoPi = Math.PI * 2;
+  let t = theta % twoPi;
+  if (t > Math.PI) t -= twoPi;
+  if (t < -Math.PI) t += twoPi;
+  return t;
+}
+
+function toBoolean(value, fallback = false) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (v === "true" || v === "1" || v === "yes" || v === "y") return true;
+    if (v === "false" || v === "0" || v === "no" || v === "n") return false;
+  }
+  return fallback;
+}
+
+function resolveThetaRadians(rawTheta, unitLike, directionLike) {
+  let theta = toFiniteNumber(rawTheta, 0);
+  const unit = String(unitLike || "").trim().toLowerCase();
+  const direction = String(directionLike || "").trim().toLowerCase();
+
+  const looksDegrees = Math.abs(theta) > Math.PI * 2 + 1e-6;
+  const isDegrees = unit.startsWith("deg") || (!unit && looksDegrees);
+  if (isDegrees) theta = theta * Math.PI / 180;
+
+  const clockwise = direction === "cw" || direction === "clockwise" || direction === "-1";
+  if (clockwise) theta = -theta;
+
+  return normalizeAngleRad(theta);
+}
+
 function PerspectiveSculptor() {
   const [pieces, setPieces] = useState(makeInitialPieces);
   const [selectedPiece, setSelectedPiece] = useState(0);
@@ -128,29 +167,51 @@ function PerspectiveSculptor() {
     }
 
     // Get overall sculpture scale if provided at root level
-    const overallScale = parsed.scale || 1.0;
+    const overallScale = toFiniteNumber(parsed.scale, 1.0);
     const coordinateUnit = parsed.coordinateUnit || parsed.positionUnit || parsed.units || "mm";
     const coordToMm = toMmFactor(coordinateUnit);
+    const globalThetaUnit = parsed.thetaUnit || parsed.rotationUnit;
+    const globalThetaDirection = parsed.thetaDirection || parsed.rotationDirection;
+    const globalFlipY = toBoolean(parsed.axisFlipY ?? parsed.flipY, options.fromApi);
+    const globalFlipZ = toBoolean(parsed.axisFlipZ ?? parsed.flipZ, options.fromApi);
 
     let reconstructedPieces = parsed.pieces.map(p => {
+      const px = p.position?.x ?? p.x ?? 0;
+      const py = p.position?.y ?? p.y ?? 0;
+      const pz = p.position?.z ?? p.z ?? 0;
+      const rawTheta = p.theta ?? p.rotation ?? 0;
+      const thetaUnit = p.thetaUnit || p.rotationUnit || globalThetaUnit;
+      const thetaDirection = p.thetaDirection || p.rotationDirection || globalThetaDirection || "";
+      const flipY = toBoolean(p.axisFlipY ?? p.flipY, globalFlipY);
+      const flipZ = toBoolean(p.axisFlipZ ?? p.flipZ, globalFlipZ);
+      const baseY = toFiniteNumber(py, 0) * overallScale * coordToMm;
+      const baseZ = toFiniteNumber(pz, 0) * overallScale * coordToMm;
+      const shapeYSign = flipY ? -1 : 1;
+
+      let theta = resolveThetaRadians(rawTheta, thetaUnit, thetaDirection);
+      if (!thetaDirection && flipZ) {
+        // Mirroring Z flips handedness of Y-axis rotation if direction isn't explicit.
+        theta = normalizeAngleRad(-theta);
+      }
+
       const controlPoints = (p.controlPoints || []).map(cp => ({
-        x: (cp.x || 0) * coordToMm,
-        y: (cp.y || 0) * coordToMm,
-        hInX: (cp.handleIn?.x || cp.hInX || 0) * coordToMm,
-        hInY: (cp.handleIn?.y || cp.hInY || 0) * coordToMm,
-        hOutX: (cp.handleOut?.x || cp.hOutX || 0) * coordToMm,
-        hOutY: (cp.handleOut?.y || cp.hOutY || 0) * coordToMm,
+        x: toFiniteNumber(cp.x, 0) * coordToMm,
+        y: toFiniteNumber(cp.y, 0) * coordToMm * shapeYSign,
+        hInX: toFiniteNumber(cp.handleIn?.x ?? cp.hInX, 0) * coordToMm,
+        hInY: toFiniteNumber(cp.handleIn?.y ?? cp.hInY, 0) * coordToMm * shapeYSign,
+        hOutX: toFiniteNumber(cp.handleOut?.x ?? cp.hOutX, 0) * coordToMm,
+        hOutY: toFiniteNumber(cp.handleOut?.y ?? cp.hOutY, 0) * coordToMm * shapeYSign,
       }));
       return {
         id: p.id || `P${Math.random().toString(36).substr(2, 9)}`,
-        x: (p.position?.x || p.x || 0) * overallScale * coordToMm,
-        y: (p.position?.y || p.y || 0) * overallScale * coordToMm,
-        z: (p.position?.z || p.z || 0) * overallScale * coordToMm,
-        scale: (p.scale || 1.0) * overallScale,
-        theta: p.theta || 0,
+        x: toFiniteNumber(px, 0) * overallScale * coordToMm,
+        y: flipY ? -baseY : baseY,
+        z: flipZ ? -baseZ : baseZ,
+        scale: toFiniteNumber(p.scale, 1.0) * overallScale,
+        theta,
         color: p.color || PIECE_COLORS[Math.floor(Math.random() * PIECE_COLORS.length)],
-        sizeCm: p.sizeCm || 5,
-        thickness: p.thickness || 3,
+        sizeCm: toFiniteNumber(p.sizeCm, 5),
+        thickness: toFiniteNumber(p.thickness, 3),
         controlPoints: controlPoints.length > 0 ? controlPoints : circlePoints(),
       };
     });
@@ -181,7 +242,7 @@ function PerspectiveSculptor() {
           z: p.z * fitScale,
           scale: p.scale * fitScale,
           sizeCm: p.sizeCm * fitScale,
-          thickness: p.thickness * fitScale,
+          thickness: p.thickness,
         }));
       }
     }
