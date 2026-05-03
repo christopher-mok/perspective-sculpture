@@ -79,6 +79,7 @@ function PerspectiveSculptor() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [unitScale, setUnitScale] = useState(1.0);
+  const [perspectiveCameraDepth, setPerspectiveCameraDepth] = useState(CAMERA.viewerDistance);
 
   // Load saved designs from storage on mount
   useEffect(() => {
@@ -292,7 +293,9 @@ function PerspectiveSculptor() {
       camera: {
         focalLength: CAMERA.focalLength,
         sensorWidth: CAMERA.sensorWidth,
-        viewerDistance: CAMERA.viewerDistance,
+        sensorHeight: CAMERA.sensorHeight,
+        verticalFovDeg: +CAMERA.verticalFovDeg.toFixed(2),
+        viewerDistance: perspectiveCameraDepth,
       },
       pieces: pieces.map(p => {
         const sl = getStringLengths(p, fb.frameY);
@@ -313,7 +316,7 @@ function PerspectiveSculptor() {
       frame: { size: Math.round(fb.size * u), centerX: Math.round(fb.centerX * u), centerZ: Math.round(fb.centerZ * u), frameY: Math.round(fb.frameY * u) },
       metadata: { totalPieces: pieces.length, colors: [...new Set(pieces.map(p => p.color))] },
     }, null, 2);
-  }, [pieces, unitScale]);
+  }, [pieces, unitScale, perspectiveCameraDepth]);
 
   const handleCopy = useCallback((text) => {
     try {
@@ -374,7 +377,12 @@ function PerspectiveSculptor() {
             <Viewport3D pieces={pieces} selectedPiece={selectedPiece} onSelectPiece={setSelectedPiece} />
           </div>
           <div style={{ borderBottom: `1px solid ${COLORS.panelBorder}`, position: "relative", minWidth: 0, minHeight: 0 }}>
-            <PerspectivePreview pieces={pieces} refImage={refImage} />
+            <PerspectivePreview
+              pieces={pieces}
+              refImage={refImage}
+              cameraDepth={perspectiveCameraDepth}
+              onCameraDepthChange={setPerspectiveCameraDepth}
+            />
           </div>
           <div style={{ borderRight: `1px solid ${COLORS.panelBorder}`, position: "relative", minWidth: 0, minHeight: 0 }}>
             <ShapeEditor pieces={pieces} selectedPiece={selectedPiece} onUpdatePiece={updatePiece} />

@@ -18,19 +18,23 @@ export const COLORS = {
 };
 
 // Match backend scene cameras:
-// - vertical FOV = 50°
+// - focal length = 50mm
 // - aspect ratio = 4:3
 export const CAMERA = {
-  verticalFovDeg: 50,
+  focalLength: 50,          // mm
   aspect: 4 / 3,
   sensorWidth: 36,          // mm
   get sensorHeight() { return this.sensorWidth / this.aspect; }, // mm
-  get focalLength() {
-    const vFovRad = (this.verticalFovDeg * Math.PI) / 180;
-    return this.sensorHeight / (2 * Math.tan(vFovRad / 2));
+  get verticalFovDeg() {
+    return (2 * Math.atan(this.sensorHeight / (2 * this.focalLength)) * 180) / Math.PI;
   },
   get fov() { return (this.verticalFovDeg * Math.PI) / 180; }, // radians
+  focalPixelsForHeight(viewportHeight) {
+    return (this.focalLength / this.sensorHeight) * viewportHeight;
+  },
   viewerDistance: 1000,     // mm from sculpture center
+  minViewerDistance: 300,
+  maxViewerDistance: 1800,
 };
 
 export const PIECE_COLORS = ["#f0d040", "#e06050", "#5a9fd4", "#6abf8a", "#e0e0e0"];
